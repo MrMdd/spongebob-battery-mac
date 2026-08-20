@@ -74,27 +74,57 @@ jobs:
           cd ..
           echo "Build Complete!"
 
-      - name: Launch App & Capture Screenshot
+      - name: Launch App & Capture Screenshots
         run: |
+          echo "=== Installing Pillow for Image Processing ==="
+          python3 -m pip install --upgrade pip Pillow
+
           echo "=== Launching Application on macOS Runner ==="
           open output/SpongeBobBattery.app
           sleep 4
 
-          echo "=== Taking Screenshot ==="
-          screencapture -x output/screenshot_desktop.png
+          echo "=== 1. Taking Desktop Screenshot ==="
+          screencapture -x output/1_desktop_menubar.png
 
-          # Create zoomed-in Menu Bar crop
+          echo "=== 2. Opening Menu & Taking Dropdown Screenshot ==="
+          # Use AppleScript to click the menu bar item to reveal the dropdown
+          osascript -e '
+          tell application "System Events"
+            tell process "SpongeBobBattery"
+              try
+                click menu bar item 1 of menu bar 2
+              on error
+                try
+                  click menu bar item 1 of menu bar 1
+                end try
+              end try
+            end tell
+          end tell' || true
+
+          sleep 2
+          screencapture -x output/2_menu_opened.png
+
+          echo "=== 3. Generating Cropped Zoomed Views ==="
           python3 -c "
           from PIL import Image
-          img = Image.open('output/screenshot_desktop.png')
-          w, h = img.size
-          # Top bar / menu bar area
-          crop_top = img.crop((0, 0, w, min(80, h)))
-          crop_top.save('output/screenshot_menubar_full.png')
-          crop_corner = img.crop((max(0, w - 800), 0, w, min(80, h)))
-          crop_corner.save('output/screenshot_menubar_corner.png')
-          print('Screenshots processed successfully!')
-          " || true
+          import os
+
+          # Crop 1: Menu Bar Top Right
+          if os.path.exists('output/1_desktop_menubar.png'):
+              img = Image.open('output/1_desktop_menubar.png')
+              w, h = img.size
+              crop_corner = img.crop((max(0, w - 800), 0, w, min(100, h)))
+              crop_corner.save('output/3_menubar_icon_zoom.png')
+
+          # Crop 2: Opened Dropdown Menu
+          if os.path.exists('output/2_menu_opened.png'):
+              img2 = Image.open('output/2_menu_opened.png')
+              w2, h2 = img2.size
+              crop_menu = img2.crop((max(0, w2 - 600), 0, w2, min(500, h2)))
+              crop_menu.save('output/4_dropdown_menu_zoom.png')
+
+          print('All zoomed crops created successfully!')
+          "
 
       - name: Upload .app & Screenshots Artifacts
         uses: actions/upload-artifact@v4
