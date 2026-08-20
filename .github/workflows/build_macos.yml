@@ -71,12 +71,36 @@ jobs:
           cp -R "$BUNDLE" output/
           cd output
           zip -r -y SpongeBobBattery-macOS.zip "$BUNDLE"
-          echo "Build Complete! ZIP is ready."
+          cd ..
+          echo "Build Complete!"
 
-      - name: Upload .app Artifact
+      - name: Launch App & Capture Screenshot
+        run: |
+          echo "=== Launching Application on macOS Runner ==="
+          open output/SpongeBobBattery.app
+          sleep 4
+
+          echo "=== Taking Screenshot ==="
+          screencapture -x output/screenshot_desktop.png
+
+          # Create zoomed-in Menu Bar crop
+          python3 -c "
+          from PIL import Image
+          img = Image.open('output/screenshot_desktop.png')
+          w, h = img.size
+          # Top bar / menu bar area
+          crop_top = img.crop((0, 0, w, min(80, h)))
+          crop_top.save('output/screenshot_menubar_full.png')
+          crop_corner = img.crop((max(0, w - 800), 0, w, min(80, h)))
+          crop_corner.save('output/screenshot_menubar_corner.png')
+          print('Screenshots processed successfully!')
+          " || true
+
+      - name: Upload .app & Screenshots Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: SpongeBobBattery-macOS
           path: |
             output/SpongeBobBattery-macOS.zip
             output/SpongeBobBattery.app
+            output/*.png
