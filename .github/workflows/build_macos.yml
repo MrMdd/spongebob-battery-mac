@@ -5,15 +5,21 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # Allows manual run button in GitHub Actions
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14 # Apple Silicon macOS Runner
+    runs-on: macos-14
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Select Latest Xcode Version
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)
+          echo "Using Xcode: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -38,7 +44,7 @@ jobs:
           echo "Found app at $APP_PATH"
           cp -R "$APP_PATH" output/
 
-          # Ad-hoc sign so macOS runs it cleanly
+          # Ad-hoc sign so macOS runs it smoothly without crashing
           codesign --force --deep --sign - "output/SpongeBobBattery.app"
 
           # Create Zip Archive
