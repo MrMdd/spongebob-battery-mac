@@ -74,21 +74,29 @@ jobs:
           cd ..
           echo "Build Complete!"
 
-      - name: Launch App & Capture Screenshot
+      - name: Generate Showcase Preview & Live Screenshot
         run: |
-          echo "=== Launching Application on macOS Runner ==="
+          echo "=== 1. Generating 2x Retina Showcase Preview (All States) ==="
+          SDK_PATH=$(xcrun --show-sdk-path --sdk macosx)
+          swiftc -O -parse-as-library \
+                 -sdk "$SDK_PATH" \
+                 -framework SwiftUI -framework AppKit \
+                 ShowcaseGenerator.swift \
+                 -o generate_showcase
+          
+          ./generate_showcase
+
+          echo "=== 2. Launching App & Capturing Desktop Screenshot ==="
           open output/SpongeBobBattery.app
           sleep 4
-
-          echo "=== Taking Screenshot of macOS Desktop & Menu Bar ==="
           screencapture -x output/screenshot_desktop.png
-          echo "Screenshot saved successfully!"
+          echo "All previews generated successfully!"
 
-      - name: Upload .app & Screenshot Artifacts
+      - name: Upload .app & Previews Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: SpongeBobBattery-macOS
           path: |
             output/SpongeBobBattery-macOS.zip
             output/SpongeBobBattery.app
-            output/screenshot_desktop.png
+            output/*.png
