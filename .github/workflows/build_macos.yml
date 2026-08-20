@@ -1,0 +1,55 @@
+name: Build macOS Menu Bar App
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Allows manual run button in GitHub Actions
+
+jobs:
+  build:
+    runs-on: macos-14 # Apple Silicon macOS Runner
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Application (.app)
+        run: |
+          xcodebuild -project SpongeBobBattery.xcodeproj \
+                     -scheme SpongeBobBattery \
+                     -configuration Release \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     build
+
+          # Copy built .app to output directory
+          mkdir -p output
+          APP_PATH=$(find build/Build/Products/Release -name "SpongeBobBattery.app" -type d | head -n 1)
+          echo "Found app at $APP_PATH"
+          cp -R "$APP_PATH" output/
+
+          # Ad-hoc sign so macOS runs it cleanly
+          codesign --force --deep --sign - "output/SpongeBobBattery.app"
+
+          # Create Zip Archive
+          cd output
+          zip -r -y SpongeBobBattery-macOS.zip SpongeBobBattery.app
+          echo "ZIP package created successfully!"
+
+      - name: Upload .app Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpongeBobBattery-macOS
+          path: |
+            output/SpongeBobBattery-macOS.zip
+            output/SpongeBobBattery.app

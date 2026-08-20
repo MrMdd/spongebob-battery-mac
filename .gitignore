@@ -1,0 +1,8 @@
+.DS_Store
+*.py
+Pil-Süngerbob.txt
+icons/
+icons-2/
+build/
+output/
+.xcodeproj

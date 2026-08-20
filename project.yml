@@ -1,0 +1,27 @@
+name: SpongeBobBattery
+options:
+  bundleIdPrefix: com.spongebob
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+targets:
+  SpongeBobBattery:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: BatteryMonitor.swift
+      - path: SpongeBobBatteryApp.swift
+      - path: Assets.xcassets
+    info:
+      path: Info.plist
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.spongebob.battery
+      INFOPLIST_FILE: Info.plist
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      SWIFT_VERSION: "5.9"
+      ENABLE_HARDENED_RUNTIME: YES
+      CODE_SIGN_IDENTITY: "-"
+      CODE_SIGNING_REQUIRED: NO
+      CODE_SIGNING_ALLOWED: YES
