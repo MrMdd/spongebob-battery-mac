@@ -66,6 +66,12 @@ final class BatteryMonitor: ObservableObject {
     // MARK: - Battery Level via IOKit
     /// Fetches the current battery level immediately
     func updateBatteryLevel() {
+        // Check for MOCK_BATTERY environment variable (used for visual testing & screenshots)
+        if let mockStr = ProcessInfo.processInfo.environment["MOCK_BATTERY"], let mockVal = Int(mockStr) {
+            self.batteryPercentage = max(0, min(100, mockVal))
+            return
+        }
+
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef] else {
             return

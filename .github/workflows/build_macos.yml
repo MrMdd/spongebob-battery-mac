@@ -74,25 +74,47 @@ jobs:
           cd ..
           echo "Build Complete!"
 
-      - name: Generate Showcase Preview & Live Screenshot
+      - name: Capture Real macOS UI Screenshots (All Battery States)
         run: |
-          echo "=== 1. Generating 2x Retina Showcase Preview (All States) ==="
-          SDK_PATH=$(xcrun --show-sdk-path --sdk macosx)
-          swiftc -O -parse-as-library \
-                 -sdk "$SDK_PATH" \
-                 -framework SwiftUI -framework AppKit \
-                 ShowcaseGenerator.swift \
-                 -o generate_showcase
-          
-          ./generate_showcase
+          set -e
+          echo "=== Compiling Menu Click Helper ==="
+          swiftc click_menu.swift -o click_menu
 
-          echo "=== 2. Launching App & Capturing Desktop Screenshot ==="
-          open output/SpongeBobBattery.app
-          sleep 4
-          screencapture -x output/screenshot_desktop.png
-          echo "All previews generated successfully!"
+          # State 1: Normal / 100% Battery ("I don't need it")
+          echo "=== Testing State 1: 100% Battery ==="
+          MOCK_BATTERY=100 ./output/SpongeBobBattery.app/Contents/MacOS/SpongeBobBattery &
+          APP_PID=$!
+          sleep 3
+          ./click_menu || true
+          sleep 1
+          screencapture -x output/1_mac_dropdown_100percent.png
+          kill $APP_PID 2>/dev/null || true
+          sleep 1
 
-      - name: Upload .app & Previews Artifacts
+          # State 2: 15% Battery ("I actually need it.")
+          echo "=== Testing State 2: 15% Battery ==="
+          MOCK_BATTERY=15 ./output/SpongeBobBattery.app/Contents/MacOS/SpongeBobBattery &
+          APP_PID=$!
+          sleep 3
+          ./click_menu || true
+          sleep 1
+          screencapture -x output/2_mac_dropdown_15percent.png
+          kill $APP_PID 2>/dev/null || true
+          sleep 1
+
+          # State 3: 5% Battery ("I NEED IT!")
+          echo "=== Testing State 3: 5% Battery ==="
+          MOCK_BATTERY=5 ./output/SpongeBobBattery.app/Contents/MacOS/SpongeBobBattery &
+          APP_PID=$!
+          sleep 3
+          ./click_menu || true
+          sleep 1
+          screencapture -x output/3_mac_dropdown_5percent.png
+          kill $APP_PID 2>/dev/null || true
+
+          echo "All Mac UI screenshots captured successfully!"
+
+      - name: Upload .app & Screenshots Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: SpongeBobBattery-macOS
