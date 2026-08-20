@@ -76,13 +76,13 @@ jobs:
 
       - name: Launch App & Capture Screenshot
         run: |
-          echo "=== Launching Application in Preview Mode on macOS Runner ==="
-          open output/SpongeBobBattery.app --args --preview
+          echo "=== Launching Application on macOS Runner ==="
+          open output/SpongeBobBattery.app
           sleep 4
 
-          echo "=== Taking Desktop Screenshot ==="
-          screencapture -x output/screenshot_preview.png
-          echo "Screenshot captured successfully!"
+          echo "=== Taking Screenshot of macOS Desktop & Menu Bar ==="
+          screencapture -x output/screenshot_desktop.png
+          echo "Screenshot saved successfully!"
 
       - name: Upload .app & Screenshot Artifacts
         uses: actions/upload-artifact@v4
@@ -91,4 +91,4 @@ jobs:
           path: |
             output/SpongeBobBattery-macOS.zip
             output/SpongeBobBattery.app
-            output/*.png
+            output/screenshot_desktop.png
