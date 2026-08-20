@@ -9,47 +9,69 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.0'
-
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
-      - name: Generate Xcode Project
-        run: xcodegen generate
-
-      - name: Build Application (.app)
+      - name: Build Universal macOS Application (.app)
         run: |
-          xcodebuild -project SpongeBobBattery.xcodeproj \
-                     -scheme SpongeBobBattery \
-                     -configuration Release \
-                     -derivedDataPath build \
-                     CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY="" \
-                     build
+          set -e
+          echo "=== 1. Creating App Bundle Structure ==="
+          APP_NAME="SpongeBobBattery"
+          BUNDLE="$APP_NAME.app"
+          rm -rf "$BUNDLE" output
+          mkdir -p "$BUNDLE/Contents/MacOS"
+          mkdir -p "$BUNDLE/Contents/Resources"
 
-          # Copy built .app to output directory
+          echo "=== 2. Compiling Asset Catalog (Icons) ==="
+          actool Assets.xcassets \
+                 --compile "$BUNDLE/Contents/Resources" \
+                 --platform macosx \
+                 --minimum-deployment-target 13.0 \
+                 --output-format human-readable-text
+
+          echo "=== 3. Compiling Swift Code (Universal Binary: ARM64 + x86_64) ==="
+          SDK_PATH=$(xcrun --show-sdk-path --sdk macosx)
+          
+          # ARM64 (Apple Silicon M1/M2/M3/M4)
+          swiftc -O -parse-as-library \
+                 -target arm64-apple-macos13.0 \
+                 -sdk "$SDK_PATH" \
+                 -framework SwiftUI -framework IOKit -framework ServiceManagement -framework AppKit \
+                 BatteryMonitor.swift SpongeBobBatteryApp.swift \
+                 -o "$BUNDLE/Contents/MacOS/${APP_NAME}_arm64"
+
+          # x86_64 (Intel Mac)
+          swiftc -O -parse-as-library \
+                 -target x86_64-apple-macos13.0 \
+                 -sdk "$SDK_PATH" \
+                 -framework SwiftUI -framework IOKit -framework ServiceManagement -framework AppKit \
+                 BatteryMonitor.swift SpongeBobBatteryApp.swift \
+                 -o "$BUNDLE/Contents/MacOS/${APP_NAME}_x86_64"
+
+          # Create Universal Binary (Works on ALL Macs)
+          lipo -create "$BUNDLE/Contents/MacOS/${APP_NAME}_arm64" \
+                       "$BUNDLE/Contents/MacOS/${APP_NAME}_x86_64" \
+               -output "$BUNDLE/Contents/MacOS/$APP_NAME"
+          
+          rm "$BUNDLE/Contents/MacOS/${APP_NAME}_arm64" "$BUNDLE/Contents/MacOS/${APP_NAME}_x86_64"
+          chmod +x "$BUNDLE/Contents/MacOS/$APP_NAME"
+
+          echo "=== 4. Copying Info.plist & PkgInfo ==="
+          cp Info.plist "$BUNDLE/Contents/Info.plist"
+          echo "APPL????" > "$BUNDLE/Contents/PkgInfo"
+
+          echo "=== 5. Ad-Hoc Code Signing ==="
+          codesign --force --deep --sign - "$BUNDLE"
+
+          echo "=== 6. Packaging into Output ZIP ==="
           mkdir -p output
-          APP_PATH=$(find build/Build/Products/Release -name "SpongeBobBattery.app" -type d | head -n 1)
-          echo "Found app at $APP_PATH"
-          cp -R "$APP_PATH" output/
-
-          # Ad-hoc sign so macOS runs it smoothly without crashing
-          codesign --force --deep --sign - "output/SpongeBobBattery.app"
-
-          # Create Zip Archive
+          cp -R "$BUNDLE" output/
           cd output
-          zip -r -y SpongeBobBattery-macOS.zip SpongeBobBattery.app
-          echo "ZIP package created successfully!"
+          zip -r -y SpongeBobBattery-macOS.zip "$BUNDLE"
+          echo "Build Complete! ZIP is ready."
 
       - name: Upload .app Artifact
         uses: actions/upload-artifact@v4
