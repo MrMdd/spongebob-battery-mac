@@ -1,8 +1,14 @@
+# macOS
 .DS_Store
-*.py
-Pil-Süngerbob.txt
-icons/
-icons-2/
+*.swp
+
+# Xcode & Build
 build/
 output/
-.xcodeproj
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+
+# Python / Temp
+*.pyc
+__pycache__/
